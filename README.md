@@ -14,7 +14,7 @@
 
 ## Hash distributed table -
 - For large fact tables > 2TB
-- Hash distribution column should have high cardinality, even distribution of values
+- Hash distribution column should have high cardinality (more distinct values), even distribution of values
 - Avoid distribution on date column (as it can result in under utilisation of compute resources) or column with high numbers of null values
 - Pick distribution column that minimizes data movement and avoids data skewness
 - Distribution column - column that is frequently used for join, group by, distinct, over, and having clause, and not for where clause
