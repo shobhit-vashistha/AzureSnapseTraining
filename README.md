@@ -1,3 +1,5 @@
+# Notes: Azure Dedicated SQL Pool optimization
+
 # 1. Data distribution
 
 - Control node (master) and compute nodes (workers)
@@ -10,11 +12,11 @@
 - when there is no obvious distribution key
 
 ## Hash distributed table -
-- for large fact tables > 2TB
-- hash distribution column should have high cardinality, even distribution of values
-- avoid distribution on date column (as it can result in under utilisation of compute resources) or column with high numbers of null values
-- pick distribution column that minimizes data movement and avoids data skewness
-- distribution key - for join, group by, distinct, over, and having clause, and not for where clause
+- For large fact tables > 2TB
+- Hash distribution column should have high cardinality, even distribution of values
+- Avoid distribution on date column (as it can result in under utilisation of compute resources) or column with high numbers of null values
+- Pick distribution column that minimizes data movement and avoids data skewness
+- Distribution column - column that is frequently used for join, group by, distinct, over, and having clause, and not for where clause
 
 ## Replicated table -
 - Has full copy on each compute node
@@ -22,8 +24,34 @@
 - ideal for small dimension tables < 2GB, and if the data is static even bigger tables
 - may not work well in cases where there are large number of columns but only a few columns are ever queried
 
-# 2. Index Options
+# 2. Index Options (Work in Progress)
 
+- Row Store
+  - Heap
+  - Clustered Index
+  - Non-Clustered Index
+- Clustered Columnstore Index (default)
+
+## Clustered Columnstore Index
+
+Segment quality is most optimal where there are at least 100 K rows per compressed row group and gain in performance as
+the number of rows per row group approach 1,048,576 rows, which is the most rows a row group can contain.
+
+clustered columnstore may not be a good option in following cases:
+
+- Columnstore tables do not support varchar(max), nvarchar(max), and varbinary(max). Consider heap or clustered index instead.
+- Columnstore tables may be less efficient for transient data. Consider heap and perhaps even temporary tables.
+- Small tables with less than 60 million rows. Consider heap tables.
+  - Cluster columnstore tables begin to achieve optimal compression once there is more than 60 million rows. For small lookup tables, less than 60 million rows, consider using HEAP or clustered index for faster query performance.
+
+## Heap Tables
+
+If you are loading data only to stage it before running more transformations, loading the table to heap table is much faster than loading the data to a clustered columnstore table.
+
+## Clustered indexes
+
+- Clustered indexes may outperform clustered columnstore tables when a single row needs to be quickly retrieved.
+- The disadvantage to using a clustered index is that only queries that benefit are the ones that use a highly selective filter on the clustered index column. To improve filter on other columns, a nonclustered index can be added to other columns. However, each index that is added to a table adds both space and processing time to loads.
 
 # 3. Table partitioning
 
@@ -48,7 +76,7 @@ So if boundary points are 1, 2, 3
 - Be careful of over-partitioning as
   - data is already spread across 60 distributions
   - columnstore index row groups upto ~1M rows (1,048,576) for optimal compression
-  - if the sales fact table contained 36 monthly partitions, and given that a dedicated SQL pool has 60 distributions, then the sales fact table should contain 60 million rows per month
+  - so ideally we should have 60M rows per partition (1M rows per partition per distribution)
 - Partition where lifecycle management is needed
   - Sliding window deployment - incoming data being added to one side of the table
   - Targeted index rebuilds - can rebuild indexes for specific partition as needed
