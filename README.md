@@ -10,6 +10,7 @@
 
 ## Round Robin table -
 - when there is no obvious distribution key
+- can be faster for temparary staging tables
 
 ## Hash distributed table -
 - For large fact tables > 2TB
