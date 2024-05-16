@@ -10,7 +10,7 @@
 
 ## Round Robin table -
 - when there is no obvious distribution key
-- can be faster for temparary staging tables
+- can be faster for temporary staging tables
 
 ## Hash distributed table -
 - For large fact tables > 2TB
@@ -87,7 +87,7 @@ So if boundary points are 1, 2, 3
 
 ### Setup
 
-```azure
+```sql
 /*
 	Sample Contoso database can be installed from here:
 	https://docs.microsoft.com/en-us/azure/synapse-analytics/sql-data-warehouse/sql-data-warehouse-load-from-azure-blob-storage-with-polybase
@@ -142,7 +142,7 @@ So if boundary points are 1, 2, 3
 
 ### Creating an un-partitioned table
 
-```azure
+```sql
 /*
 --DROP EXTERNAL TABLE [asb].[FactOnlineSales];
 CREATE EXTERNAL TABLE [asb].[FactOnlineSales]
@@ -188,7 +188,7 @@ OPTION (LABEL = 'CTAS : Load [cso].[FactOnlineSales]');
 */
 ```
 
-```azure
+```sql
 SELECT min(datekey), max(datekey) 
 FROM [cso].[FactOnlineSales];
 
@@ -203,7 +203,7 @@ GROUP BY year(datekey);
 
 ### Creating an empty partitioned table
 
-```azure
+```sql
 --DROP TABLE [cso].[FactOnlineSales_PExample]
 CREATE TABLE [cso].[FactOnlineSales_PExample] 
 (   
@@ -245,7 +245,7 @@ WITH
 
 ### Creating a partitioned table with CTAS
 
-```azure
+```sql
 --DROP TABLE [cso].[FactOnlineSales_Partitioned]
 CREATE TABLE [cso].[FactOnlineSales_Partitioned]
 WITH
@@ -266,11 +266,11 @@ SELECT * FROM [cso].[FactOnlineSales];
 
 #### Recommended to create statistics on this table for optimal performance
 
-```azure
+```sql
 --UPDATE statistics [cso].[FactOnlineSales_Partitioned]
 ```
 
-```azure
+```sql
 SELECT year(datekey), count(*)
 FROM [cso].[FactOnlineSales_Partitioned]
 GROUP BY year(datekey)
@@ -279,7 +279,7 @@ ORDER BY year(datekey);
 
 #### To check partitions on this table - sys.dm_pdw_nodes_db_partition_stats
 
-```azure
+```sql
 SELECT  pnp.partition_number, sum(nps.[row_count]) AS Row_Count
 FROM
    sys.tables t
@@ -310,7 +310,7 @@ GROUP BY pnp.partition_number;
 Boundary point is defined for the range for which data needs to be switched out. for Switching-out this can be skipped
 and the data will be switched out to a non-partition table, but is necessary for Switching in
 
-```azure
+```sql
 --DROP TABLE [cso].[FactOnlineSales_out]
 CREATE TABLE [cso].[FactOnlineSales_out]
 WITH 
@@ -328,7 +328,7 @@ SELECT * FROM [cso].[FactOnlineSales_Partitioned] WHERE 1=2;
 
 #### Check partition info for the above table
 this will show 0 rows in each of the 2 partitions as there is no data
-```azure
+```sql
 --Data deletion or archival - Partition Switch Out
 SELECT  pnp.partition_number, sum(nps.[row_count]) AS Row_Count
 FROM
@@ -357,13 +357,13 @@ GROUP BY pnp.partition_number;
 
 This is a meta-data operation, so it will run quickly irrespective of how big the partition is
 
-```azure
+```sql
 ALTER TABLE [cso].[FactOnlineSales_Partitioned] 
 SWITCH PARTITION 2 
 TO [cso].[FactOnlineSales_out] PARTITION 2;
 ```
 
-```azure
+```sql
 SELECT min(datekey), max(datekey) 
 FROM [cso].[FactOnlineSales_Partitioned];
 
@@ -373,7 +373,7 @@ FROM [cso].[FactOnlineSales_out];
 
 #### Drop/Archive the out table
 
-```azure
+```sql
 --Validate row count for both main and archive tables
 
 DROP TABLE [cso].[FactOnlineSales_out];
@@ -395,7 +395,7 @@ empty before it can be split.
 
 This will work in this case as the partition we are splitting does not have any data, would not work otherwise
 
-```azure
+```sql
 ALTER TABLE [cso].[FactOnlineSales_Partitioned] 
 SPLIT RANGE ('2011-01-01 00:00:00.000');
 ```
@@ -404,7 +404,7 @@ SPLIT RANGE ('2011-01-01 00:00:00.000');
 
 This will show one more partition
 
-```azure
+```sql
 SELECT  pnp.partition_number, sum(nps.[row_count]) AS Row_Count
 FROM
    sys.tables t
@@ -432,7 +432,7 @@ GROUP BY pnp.partition_number;
 
 Adding an entire new year's worth of data
 
-```azure
+```sql
 --ensure the table definitions match and that the partitions align 
 --on their respective boundaries, i.e. the source table must contain 
 --the same partition boundaries as the target table 
@@ -466,7 +466,7 @@ WHERE stg.[DateKey] >= '2009-01-01 00:00:00.000'
 AND   stg.[DateKey] <  '2010-01-01 00:00:00.000'
 ```
 
-```azure
+```sql
 SELECT  min(datekey), max(datekey) 
 FROM [cso].[FactOnlineSales_in];
 ```
@@ -475,7 +475,7 @@ FROM [cso].[FactOnlineSales_in];
 
 This will only show data in 2010 partition
 
-```azure
+```sql
 SELECT  pnp.partition_number, sum(nps.[row_count]) AS Row_Count
 FROM
    sys.tables t
@@ -501,7 +501,7 @@ GROUP BY pnp.partition_number;
 
 #### Switch partition 5 from staging table to original
 
-```azure
+```sql
 ALTER TABLE [cso].[FactOnlineSales_in] 
 SWITCH PARTITION 5 
 TO [cso].[FactOnlineSales_Partitioned] PARTITION 5;
@@ -509,7 +509,7 @@ TO [cso].[FactOnlineSales_Partitioned] PARTITION 5;
 
 #### Check partition info for original table
 
-```azure
+```sql
 SELECT  pnp.partition_number, sum(nps.[row_count]) AS Row_Count
 FROM
    sys.tables t
@@ -537,7 +537,7 @@ GROUP BY pnp.partition_number;
 
 Adding data for a specific month
 
-```azure
+```sql
 --Scenario 2
 CREATE TABLE [cso].[FactOnlineSales_in2]
 WITH 
@@ -575,7 +575,7 @@ AND   tgt.[DateKey] <  '2010-04-30 00:00:00.000'
 
 - Each distribution will have 6 partitions, 3 of them empty for each distribution, with skewed number of rows
 
-```azure
+```sql
 --Before partitions are created, dedicated SQL pool already divides 
 --each table into 60 distributed databases. For optimal compression and 
 --performance of clustered columnstore tables, 1 million rows 
