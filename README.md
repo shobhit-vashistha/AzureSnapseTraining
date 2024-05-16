@@ -154,7 +154,7 @@ Row groups can exist in following states
   - Delta Stores - row store table that holds rows until number of rows is large enough to store in column store
   - In a bulk load operation most rows can skip delta store 
 
-# TBD
+(more to be added here #TODO)
 
 ### Tips
 - Although number of rows should be 1M per row group with a lower threshold being 102k rows, sometimes fewer rows are contained in a row group
