@@ -83,32 +83,89 @@
 
 # 2. Index Options
 
+Types of stores -
+
+- Row stores
+  - Data for all the columns in a given row is stored on a single page
+  - Good for selective queries where a few rows are selected and all columns are needed
+- Column stores
+  - Data for all the rows for a given column is stored on a single page
+  - Works best for analytical workloads, where large number of rows are selected but only with few columns
+
+Index options in Dedicated SQL Pool -
+
 - Row Store
   - Heap
   - Clustered Index
   - Non-Clustered Index
-- Clustered Columnstore Index (default)
+- Column store 
+  - Clustered Columnstore Index (default)
+
+## Row Store: Heap tables
+- No cluster index, No logical order for storing the rows, Append only
+- Faster target for loading data then clustered index tables (can be used as a staging table for large unordered insert operations)
+- One or more narrow (with few columns) non-cluster index can be created to optimize read, depending on the search query
+
+## Row Store: Indexes (clustered and non-clustered)
+- Uses a B-tree to organize data
+- Gets fragmented overtime, requires more maintenance
+- Ideal for limited range scans and single selects
+- Slower for table scans / partition scans / loading data
+
+### Clustered Index
+- Data gets sorted on the basis of a clustered index (which can have one or more columns)
+- You can only have one clustered index per table, the table is referred to as a clustered table
+
+### Non-clustered Index
+- Index key values are sorted separately from the data rows, and stored
+- Each index key value has a pointer to the corresponding data row 
+
+### Tips
+- For analytical workloads, a clustered table is typically created for small dimension tables
+- And narrow non-clustered index that covers the search parameters in the query (on either clustered table or a heap table)
+- However, the more non-clustered indexes we create, the longer it will take to load data into the table (should also apply to inserts/updates/deletes) 
+- Need to strike a balance between query performance and data load performance
 
 ## Clustered Columnstore Index
 
-Segment quality is most optimal where there are at least 100 K rows per compressed row group and gain in performance as
-the number of rows per row group approach 1,048,576 rows, which is the most rows a row group can contain.
+- Data first gets divided into row-groups (ideally ~1M rows per group)
+- Then for each of the columns there is a column segment
+- Compression gets applied to each column segment, and columnstore data is generated and stored with the table data
 
-clustered columnstore may not be a good option in following cases:
+Analytical workloads run faster because -
+- Data reads are eliminated in cases where all columns are not selected 
+- For a given column the values are highly likely to be repeated, which results in better compression
+- SQL Engine's Batch mode processing operator, which processes 1 bach row of data instead of 1 row at a time, is optimised for multicore architecture
 
+### Row Groups
+
+Row groups can exist in following states
+- Open: (in delta-store) accepting new rows, data is not compressed or indexed
+- Closed: (in delta-store) not accepting new rows
+- Compressed: in Column store format
+- Tombstone: when all data in a row-group is deleted
+
+
+### Updates
+- CCIs maximize compression
+- Expensive to update
+- Mechanisms for handling updates include -
+  - Delete Bitmap (soft logical delete, rebuilding of index is needed)
+  - Delta Stores - row store table that holds rows until number of rows is large enough to store in column store
+  - In a bulk load operation most rows can skip delta store 
+
+# TBD
+
+### Tips
+- Although number of rows should be 1M per row group with a lower threshold being 102k rows, sometimes fewer rows are contained in a row group
+- This is because sufficient resources were not available while creating the table (the fix is to rebuild index with higher resources)
+- Segment quality is most optimal where there are at least 100 K rows per compressed row group and gain in performance as the number of rows per row group approach 1,048,576 rows, which is the most rows a row group can contain.
+- Clustered indexes may outperform clustered columnstore tables when a single row needs to be quickly retrieved
 - Columnstore tables do not support varchar(max), nvarchar(max), and varbinary(max). Consider heap or clustered index instead.
 - Columnstore tables may be less efficient for transient data. Consider heap and perhaps even temporary tables.
-- Small tables with less than 60 million rows. Consider heap tables.
-  - Cluster columnstore tables begin to achieve optimal compression once there is more than 60 million rows. For small lookup tables, less than 60 million rows, consider using HEAP or clustered index for faster query performance.
+- For small tables with less than 60 million rows. Consider heap tables.
+- Cluster columnstore tables begin to achieve optimal compression once there is more than 60 million rows. For small lookup tables, less than 60 million rows, consider using HEAP or clustered index for faster query performance.
 
-## Heap Tables
-
-If you are loading data only to stage it before running more transformations, loading the table to heap table is much faster than loading the data to a clustered columnstore table.
-
-## Clustered indexes
-
-- Clustered indexes may outperform clustered columnstore tables when a single row needs to be quickly retrieved.
-- The disadvantage to using a clustered index is that only queries that benefit are the ones that use a highly selective filter on the clustered index column. To improve filter on other columns, a nonclustered index can be added to other columns. However, each index that is added to a table adds both space and processing time to loads.
 
 # 3. Table partitioning
 
@@ -518,8 +575,10 @@ GO
 
 ## 4.2 Index Options
 
+### Part 1 - Columnstore index (default), Heap, Clustered and non-clustered Indexes
+
+#### Create an external table
 ```sql
---Part 1 - Columnstore index (default), Heap, Clustered and non-clustered Indexes
 CREATE EXTERNAL TABLE [asb].DimProduct (
     [ProductKey] [int] NOT NULL,
     [ProductLabel] [nvarchar](255) NULL,
@@ -563,7 +622,10 @@ WITH
 ,   REJECT_VALUE = 0
 )
 ;
+```
 
+#### Create a table, by default clustered columnstore index will be created 
+```sql
 ----Default is clustered Columstore index
 IF OBJECT_ID('cso.DimProductRR', 'U') IS NOT NULL
     DROP TABLE [cso].[DimProductRR]
@@ -575,6 +637,10 @@ SELECT * FROM [asb].[DimProduct]
 OPTION (LABEL = 'CTAS : Load [cso].[DimProductRR]');
 GO
 
+```
+
+#### We can investigate the table properties/metadata by doing the following
+```sql
 /*
 	Create the dbo.vTableSizes with the source code available here:
 	https://docs.microsoft.com/en-us/azure/synapse-analytics/sql-data-warehouse/sql-data-warehouse-tables-overview#table-size-queries
@@ -585,7 +651,10 @@ SELECT pdw_node_id, schema_name, table_name, index_type_desc, node_table_name, d
 FROM dbo.vTableSizes
 WHERE table_name = 'DimProductRR'
 ORDER BY distribution_id
+```
 
+#### To create a heap table
+```sql
 ----Heap
 IF OBJECT_ID('cso.DimProductRR', 'U') IS NOT NULL
     DROP TABLE [cso].[DimProductRR]
@@ -596,14 +665,20 @@ AS
 SELECT * FROM [asb].[DimProduct] 
 OPTION (LABEL = 'CTAS : Load [cso].[DimProductRR]');
 GO
+```
 
+#### We can investigate the table properties/metadata by doing the following
+```sql
 SELECT pdw_node_id, schema_name, table_name, index_type_desc, node_table_name, distribution_id, 
 	row_count, distribution_policy_name, distribution_column, 
 	reserved_space_GB, unused_space_GB, data_space_GB, index_space_GB
 FROM dbo.vTableSizes
 WHERE table_name = 'DimProductRR'
 ORDER BY distribution_id
+```
 
+#### To create a clustered table
+```sql
 ----Clustered Index
 IF OBJECT_ID('cso.DimProductRR', 'U') IS NOT NULL
     DROP TABLE [cso].[DimProductRR]
@@ -614,18 +689,28 @@ AS
 SELECT * FROM [asb].[DimProduct] 
 OPTION (LABEL = 'CTAS : Load [cso].[DimProductRR]');
 GO
+```
 
+#### We can investigate the table properties/metadata by doing the following
+```sql
 SELECT pdw_node_id, schema_name, table_name, index_type_desc, node_table_name, distribution_id, 
 	row_count, distribution_policy_name, distribution_column, 
 	reserved_space_GB, unused_space_GB, data_space_GB, index_space_GB
 FROM dbo.vTableSizes
 WHERE table_name = 'DimProductRR'
 ORDER BY distribution_id
+```
 
+#### We can create additional non-clustered indexes to cover our queries
+```sql
 ----Non-Clustered Index
 CREATE NONCLUSTERED INDEX IX_DimProduct_ProductSubcategoryKey   
     ON [cso].[DimProductRR] (ProductSubcategoryKey);  
+```
 
+#### To check the metadata of the index
+In the output you will notice both clustered and non-clustered indexes that we have created
+```sql
 SELECT 
 	s.name, t.name, i.name, i.type_desc
 FROM 
@@ -635,8 +720,12 @@ INNER JOIN sys.tables t
 INNER JOIN sys.indexes i
     ON  t.[object_id] = i.[object_id]
 WHERE s.name = 'cso' AND t.name = 'DimProductRR'
+```
 
---Part 2 - Clustered Columnstore Index - rowgroup, column segments
+### Part 2 - Clustered Columnstore Index - rowgroup, column segments
+
+#### Create an external table
+```sql
 CREATE EXTERNAL TABLE [asb].[FactOnlineSales]
 (
     [OnlineSalesKey] [int]  NOT NULL,
@@ -669,7 +758,10 @@ WITH
 ,   REJECT_TYPE = VALUE
 ,   REJECT_VALUE = 0
 );
+```
 
+#### Create internal table
+```sql
 ----Drop existing table
 IF OBJECT_ID('cso.FactOnlineSalesRR', 'U') IS NOT NULL
     DROP TABLE [cso].[FactOnlineSalesRR]
@@ -681,8 +773,12 @@ SELECT * FROM [asb].[FactOnlineSales]
 OPTION (LABEL = 'CTAS : Load [cso].[FactOnlineSalesRR]');
 
 ----Create necessary statistics
+```
 
-----Analyze - Total rows, row in open, closed and compressed row groups
+#### Analyze - Total rows, row in open, closed and compressed row groups
+- You will notice no, Open or closed row groups, all row-groups will be in compressed state
+- This is because we just created this table, when we start updating the records we will see row-groups in other states
+```sql
 SELECT * FROM
 (
 	SELECT
@@ -708,8 +804,11 @@ SELECT * FROM
 ) Temp
 WHERE [Table Name] = 'FactOnlineSalesRR'
 GO
+```
 
-----Analyze - Total rows, deleted rows, percent deleted rows per distribution
+#### Analyze - Total rows, deleted rows, percent deleted rows per distribution
+You will notice 2 row groups created per distribution
+```sql
 SELECT IndexMap.object_id,   
   object_name(IndexMap.object_id) AS LogicalTableName,   
   CSRowGroups.*,  
@@ -732,8 +831,11 @@ JOIN sys.pdw_nodes_column_store_row_groups AS CSRowGroups
     AND CSRowGroups.index_id = NI.index_id      
 WHERE t.name = 'FactOnlineSalesRR'   
 ORDER BY object_name(i.object_id), i.name, IndexMap.physical_name, pdw_node_id;  
+```
 
-----Analyze - Number of column segment for each column of the table
+#### Analyze - Number of column segment for each column of the table
+You will notice segment count of 120 per segment, (2 row groups pre distribution * 60 distributions)
+```sql
 SELECT * FROM
 (
 	SELECT  sm.name           as schema_nm
@@ -762,8 +864,10 @@ SELECT * FROM
 ) Temp
 WHERE table_nm = 'FactOnlineSalesRR' ORDER BY column_id
 GO
+```
 
-----Analyze - Number of column segment and rows each column segments of the table
+#### Analyze - Number of column segment and rows each column segments of the table
+```sql
 SELECT distinct o.name, css.hobt_id, css.pdw_node_id, css.distribution_id, 
 css.column_id, css.segment_id, css.row_count, css.on_disk_size
 FROM sys.pdw_nodes_column_store_segments AS css
@@ -778,8 +882,11 @@ JOIN sys.objects AS o
     ON TMap.object_id = o.object_id
 WHERE o.name = 'FactOnlineSalesRR' AND css. column_id = 1 --AND  css.distribution_id = 31
 ORDER BY css.pdw_node_id, css.distribution_id, css.column_id, css.segment_id
+```
 
---Part 3 - Updatind rows to columnstore index
+### Part 3 - Updating rows to columnstore index
+
+```sql
 SELECT
 	s.name AS [Schema Name]
 	,t.name AS [Table Name]
