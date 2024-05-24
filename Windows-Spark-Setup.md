@@ -149,7 +149,7 @@ To check compatibility of maven packages search package at - https://mvnreposito
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_${scala.compat.version}</artifactId>
       <version>${spark.version}</version>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
 ```
 
