@@ -4,11 +4,11 @@
 
 - Download installer from https://aka.ms/download-jdk/microsoft-jdk-11.0.23-windows-x64.msi
 - Install using the installer
-- On custom setup, select the option to add JAVA_HOME environment variable
-- Make sure the environment variable "JAVA_HOME" is "C:\Program Files\Microsoft\jdk-11.0.23.9-hotspot\", if it is not, edit it to set to this value
+- On custom setup, select the option to add `JAVA_HOME` environment variable
+- Make sure the environment variable `JAVA_HOME` is `C:\Program Files\Microsoft\jdk-11.0.23.9-hotspot\`, if it is not, edit it to set to this value
     - Search "env" in the start menu and select "Edit the system environment variables", a new window will open
     - Click "Environment Variables", a new window will open
-    - JAVA_HOME should be set to C:\Program Files\Microsoft\jdk-11.0.23.9-hotspot
+    - `JAVA_HOME` should be set to `C:\Program Files\Microsoft\jdk-11.0.23.9-hotspot`
 - Verify from command line/powershell (if a shell is already open, you would need to close and reopen the shell window)
 
 ```
@@ -21,12 +21,12 @@ OpenJDK 64-Bit Server VM Microsoft-9394293 (build 11.0.23+9-LTS, mixed mode, sha
 
 ## Install Maven -
 - Download maven zip from https://dlcdn.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.zip
-- Unzip to C:\Program Files\ -> now you should have C:\Program Files\apache-maven-3.9.6 path present
-- Add C:\Program Files\apache-maven-3.9.6\bin to PATH environment variable
+- Unzip to `C:\Program Files\` -> now you should have `C:\Program Files\apache-maven-3.9.6` path present
+- Add `C:\Program Files\apache-maven-3.9.6\bin` to `PATH` environment variable
     - Search "env" in the start menu and select "Edit the system environment variables", a new window will open
     - Click "Environment Variables", a new window will open
     - From "System Variables" select "Path" and click "Edit", a new window will open
-    - Click "New" and add C:\Program Files\apache-maven-3.9.6\bin, and click "Ok"
+    - Click "New" and add `C:\Program Files\apache-maven-3.9.6\bin`, and click "Ok"
     - Close the other windows
 - Verify from command line/powershell (if a shell is already open, you would need to close and reopen the shell window)
 
@@ -69,14 +69,14 @@ Sources:
     - Select Spark release as "3.5.1"
     - Select package type as "Pre-built for Apache Hadoop 3.3 or later (Scala 2.13)"
     - Click the download link
-- Extract the file to C:\Program Files\ (.tgz file, you will need Winrar), you should have C:\Program Files\spark-3.5.1-bin-hadoop3-scala2.13 path present now
-- Add System environment variable SPARK_HOME as C:\Program Files\spark-3.5.1-bin-hadoop3-scala2.13
-- Add %SPARK_HOME%\bin to "Path" environment variable
+- Extract the file to `C:\Program Files\` (.tgz file, you will need Winrar), you should have `C:\Program Files\spark-3.5.1-bin-hadoop3-scala2.13` path present now
+- Add System environment variable `SPARK_HOME` as `C:\Program Files\spark-3.5.1-bin-hadoop3-scala2.13`
+- Add `%SPARK_HOME%\bin` to "Path" environment variable
 - Install Hadoop 3.3.1 on Windows (needed for spark) -
     - Download https://github.com/robguilarr/spark-winutils-3.3.1/blob/master/hadoop-3.3.1/bin/winutils.exe?raw=true
-    - Create folder C:\winutils\bin and move the downloaded exe to this folder
-    - Add System environment variable HADOOP_HOME as C:\winutils
-    - Add %HADOOP_HOME%\bin to "Path" environment variable
+    - Create folder `C:\winutils\bin` and move the downloaded exe to this folder
+    - Add System environment variable `HADOOP_HOME` as `C:\winutils`
+    - Add `%HADOOP_HOME%\bin` to "Path" environment variable
 - Verify from command line/powershell (if a shell is already open, you would need to close and reopen the shell window)
 
 ```
@@ -116,20 +116,20 @@ Source: https://www.knowledgehut.com/blog/big-data/how-to-install-apache-spark-o
 - Select "Maven Archetype" from sidebar on the left
 - Give a project name, for JDK, select jdk-11 from the dropdown
 - In "Archetype" click Add, a window will pop up, set the following values, and click Add
-    - groupId: net.alchim31.maven
-    - artifactId: scala-archetype-simple
-    - version: 1.7
+    - groupId: `net.alchim31.maven`
+    - artifactId: `scala-archetype-simple`
+    - version: `1.7`
 - Click "Create", Wait for the project to get created
 - Run main > scala > ... > App > main to make sure everything is working so far
 
 
 
 ## Update project to Scala 2.13 -
-- Open "pom.xml" and edit <scala.version> tag to reflect `<scala.version>2.13.14</scala.version>`
-- update scala.compat.version to 2.13
-- update spec2.version to 4.20.6
-- in <dependencies> tag update junit version to 4.13.2
-- in <dependencies> tag update scalatest version to 3.2.18
+- Open "pom.xml" and edit `<scala.version>` tag to reflect `<scala.version>2.13.14</scala.version>`
+- update `scala.compat.version` to 2.13
+- update `spec2.version` to 4.20.6
+- in `<dependencies>` tag update junit version to 4.13.2
+- in `<dependencies>` tag update scalatest version to 3.2.18
 - click the maven refresh button
 - Run main > scala > ... > App > main to make sure everything is working so far
 
