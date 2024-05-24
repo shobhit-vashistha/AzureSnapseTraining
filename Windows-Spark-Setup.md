@@ -61,7 +61,10 @@ Sources:
 
 
 
-## Install Spark 3.5.1 - (direct download link https://dlcdn.apache.org/spark/spark-3.5.1/spark-3.5.1-bin-hadoop3-scala2.13.tgz)
+## Install Spark 3.5.1 -
+
+(direct download link https://dlcdn.apache.org/spark/spark-3.5.1/spark-3.5.1-bin-hadoop3-scala2.13.tgz)
+
 - Download Spark at https://spark.apache.org/downloads.html
     - Select Spark release as "3.5.1"
     - Select package type as "Pre-built for Apache Hadoop 3.3 or later (Scala 2.13)"
