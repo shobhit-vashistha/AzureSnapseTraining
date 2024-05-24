@@ -133,6 +133,7 @@ Source: https://www.knowledgehut.com/blog/big-data/how-to-install-apache-spark-o
 - click the maven refresh button
 - Run main > scala > ... > App > main to make sure everything is working so far
 
+To check compatibility of maven packages search package at - https://mvnrepository.com/repos/central
 
 ## Add Spark 3.5.1 dependencies to the project -
 - In "pom.xml" add `<spark.version>3.5.1</spark.version>` to `<properties>` tag
@@ -154,14 +155,21 @@ Source: https://www.knowledgehut.com/blog/big-data/how-to-install-apache-spark-o
 
 - Add some spark code to main > scala > ... > App > main
 
+
 ```scala
-  val spark = SparkSession.builder.appName("Simple Application").getOrCreate()
+// to import SparkSession
+import org.apache.spark.sql.SparkSession
+```
+
+```scala
+  val spark = SparkSession.builder.appName("Simple Application").master("local[*]").getOrCreate()
   val values = List(1,2,3,4,5)
   import spark.implicits._
   val df = values.toDF()
   df.show()
   spark.stop()
 ```
+
 
 - Run main > scala > ... > App > main to make sure spark code is running
 
